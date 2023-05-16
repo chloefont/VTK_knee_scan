@@ -1,10 +1,41 @@
 import vtk
 
 # source : https://kitware.github.io/vtk-examples/site/Cxx/IO/ReadSLC/
+colors = vtk.vtkNamedColors()
+
+
+def view_1(skin_contour_filter):
+    cut_plane = vtk.vtkPlane()
+    cut_plane.SetOrigin(0, 0, 0)
+    cut_plane.SetNormal(0, 0, 1)
+
+    cutter = vtk.vtkCutter()
+    cutter.SetCutFunction(cut_plane)
+    cutter.SetInputConnection(skin_contour_filter.GetOutputPort())
+    cutter.Update()
+
+    cut_filter = vtk.vtkTubeFilter()
+    cut_filter.SetInputConnection(cutter.GetOutputPort())
+    cut_filter.SetRadius(0.1)
+    cut_filter.SetNumberOfSides(50)
+    cut_filter.Update()
+
+    cut_mapper = vtk.vtkPolyDataMapper()
+    cut_mapper.SetInputConnection(cut_filter.GetOutputPort())
+    cut_mapper.SetScalarVisibility(0)
+
+    cut_actor = vtk.vtkActor()
+    cut_actor.SetMapper(cut_mapper)
+    cut_actor.GetProperty().SetDiffuseColor(colors.GetColor3d("SkinColor"))
+    return cut_actor
+
+
 
 if __name__ == '__main__':
     FILENAME = "data/vw_knee.slc"
+    VTK_FILE = "data/vw_knee.vtk"
     iso_value = 72
+    skin_iso_value = 50
 
     # Using vtkSLCReader to read Volumetric file format( < filename.slc >)
     reader = vtk.vtkSLCReader()
@@ -13,14 +44,21 @@ if __name__ == '__main__':
 
     # Implementing Marching Cubes Algorithm to create the surface using
     # vtkContourFilter object
-    cfilter = vtk.vtkContourFilter()
-    cfilter.SetInputConnection(reader.GetOutputPort())
+    bone_contour_filter = vtk.vtkContourFilter()
+    bone_contour_filter.SetInputConnection(reader.GetOutputPort())
 
-    # Change the range(2nd and 3rd Paramater) based on your
+    skin_contour_filter = vtk.vtkContourFilter()
+    skin_contour_filter.SetInputConnection(reader.GetOutputPort())
+
+    # Change the range(2nd and 3rd Parameter) based on your
     # requirement.recomended value for 1st parameter is above 1
-    # cFilter->GenerateValues(5, 80.0, 100.0);
-    cfilter.SetValue(0, iso_value)
-    cfilter.Update()
+    bone_contour_filter.GenerateValues(5, 80.0, 100.0);
+    bone_contour_filter.SetValue(0, iso_value)
+    bone_contour_filter.Update()
+
+    skin_contour_filter.GenerateValues(5, 0.0, 100.0);
+    skin_contour_filter.SetValue(0, skin_iso_value)
+    skin_contour_filter.Update()
 
     # Adding the outliner using vtkOutlineFilter object
     outliner = vtk.vtkOutlineFilter()
@@ -28,18 +66,28 @@ if __name__ == '__main__':
     outliner.Update()
 
     # Visualize
-    mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInputConnection(cfilter.GetOutputPort())
-    mapper.SetScalarVisibility(0)
+    bone_mapper = vtk.vtkPolyDataMapper()
+    bone_mapper.SetInputConnection(bone_contour_filter.GetOutputPort())
+    bone_mapper.SetScalarVisibility(0)
 
-    colors = vtk.vtkNamedColors()
+    skin_mapper = vtk.vtkPolyDataMapper()
+    skin_mapper.SetInputConnection(skin_contour_filter.GetOutputPort())
+    skin_mapper.SetScalarVisibility(0)
 
-    actor = vtk.vtkActor()
-    actor.SetMapper(mapper)
-    actor.GetProperty().SetDiffuse(0.8)
-    actor.GetProperty().SetDiffuseColor(colors.GetColor3d("Ivory"))
-    actor.GetProperty().SetSpecular(0.8)
-    actor.GetProperty().SetSpecularPower(120.0)
+
+    bone_actor = vtk.vtkActor()
+    bone_actor.SetMapper(bone_mapper)
+    bone_actor.GetProperty().SetDiffuse(0.8)
+    bone_actor.GetProperty().SetDiffuseColor(colors.GetColor3d("Ivory"))
+    bone_actor.GetProperty().SetSpecular(0.8)
+    bone_actor.GetProperty().SetSpecularPower(120.0)
+
+    skin_actor = vtk.vtkActor()
+    skin_actor.SetMapper(skin_mapper)
+    skin_actor.GetProperty().SetDiffuse(0.8)
+    skin_actor.GetProperty().SetDiffuseColor(colors.GetColor3d("PeachPuff"))
+    skin_actor.GetProperty().SetSpecular(0.8)
+    skin_actor.GetProperty().SetSpecularPower(120.0)
 
     # extractVOI is used to fix the problem of subsampling of data and reduce
     # slow interaction and increase loading speed
@@ -56,7 +104,8 @@ if __name__ == '__main__':
     render_window_interactor = vtk.vtkRenderWindowInteractor()
     render_window_interactor.SetRenderWindow(render_window)
 
-    renderer.AddActor(actor)
+    renderer.AddActor(bone_actor)
+    renderer.AddActor(view_1(skin_contour_filter))
     renderer.SetBackground(colors.GetColor3d("SlateGray"))
     render_window.Render()
 
