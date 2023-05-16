@@ -11,13 +11,18 @@ def view_1(skin_contour_filter):
 
     cutter = vtk.vtkCutter()
     cutter.SetCutFunction(cut_plane)
+    cutter.GenerateValues(19, 0, 200) # TODO mettre tous les cms
     cutter.SetInputConnection(skin_contour_filter.GetOutputPort())
     cutter.Update()
 
+    stripper = vtk.vtkStripper()
+    stripper.SetInputConnection(cutter.GetOutputPort())
+    stripper.Update()
+
     cut_filter = vtk.vtkTubeFilter()
-    cut_filter.SetInputConnection(cutter.GetOutputPort())
-    cut_filter.SetRadius(0.1)
-    cut_filter.SetNumberOfSides(50)
+    cut_filter.SetInputConnection(stripper.GetOutputPort())
+    cut_filter.SetRadius(0.5)
+    #cut_filter.SetNumberOfSides(50)
     cut_filter.Update()
 
     cut_mapper = vtk.vtkPolyDataMapper()
@@ -26,7 +31,7 @@ def view_1(skin_contour_filter):
 
     cut_actor = vtk.vtkActor()
     cut_actor.SetMapper(cut_mapper)
-    cut_actor.GetProperty().SetDiffuseColor(colors.GetColor3d("SkinColor"))
+    cut_actor.GetProperty().SetColor(colors.GetColor3d("PeachPuff"))
     return cut_actor
 
 
@@ -56,7 +61,7 @@ if __name__ == '__main__':
     bone_contour_filter.SetValue(0, iso_value)
     bone_contour_filter.Update()
 
-    skin_contour_filter.GenerateValues(5, 0.0, 100.0);
+    #skin_contour_filter.GenerateValues(5, 80.0, 100.0);
     skin_contour_filter.SetValue(0, skin_iso_value)
     skin_contour_filter.Update()
 
@@ -105,6 +110,7 @@ if __name__ == '__main__':
     render_window_interactor.SetRenderWindow(render_window)
 
     renderer.AddActor(bone_actor)
+    #renderer.AddActor(skin_actor)
     renderer.AddActor(view_1(skin_contour_filter))
     renderer.SetBackground(colors.GetColor3d("SlateGray"))
     render_window.Render()
