@@ -59,6 +59,8 @@ def view_2(skin_contour_filter):
     volume_actor = vtk.vtkActor()
     volume_actor.SetMapper(volume_mapper)
     volume_actor.GetProperty().SetColor(colors.GetColor3d("skin"))
+    volume_actor.GetProperty().SetOpacity(0.5)
+
     return volume_actor
 
 
