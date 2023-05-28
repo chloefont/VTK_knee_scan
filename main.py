@@ -8,6 +8,7 @@ colors.SetColor("view3_bc", [210, 210, 255, 255])
 colors.SetColor("view4_bc", [210, 210, 210, 255])
 colors.SetColor("skin", [165, 127, 127, 255])
 colors.SetColor("bone", [232, 232, 232, 255])
+colors.SetColor("sphere", [205, 206, 230, 255])
 
 
 def view_1(skin_contour_filter):
@@ -46,6 +47,7 @@ def view_2(skin_contour_filter):
     sphere.SetRadius(50)
     sphere.SetCenter(70, 40, 100)
 
+
     clipper = vtk.vtkClipPolyData()
     clipper.SetInputConnection(skin_contour_filter.GetOutputPort())
     clipper.SetClipFunction(sphere)
@@ -59,9 +61,49 @@ def view_2(skin_contour_filter):
     volume_actor = vtk.vtkActor()
     volume_actor.SetMapper(volume_mapper)
     volume_actor.GetProperty().SetColor(colors.GetColor3d("skin"))
-    volume_actor.GetProperty().SetOpacity(0.5)
 
     return volume_actor
+
+def view_3(skin_contour_filter):
+    sphere = vtk.vtkSphere()
+    sphere.SetRadius(50)
+    sphere.SetCenter(70, 40, 100)
+
+    clipper = vtk.vtkClipPolyData()
+    clipper.SetInputConnection(skin_contour_filter.GetOutputPort())
+    clipper.SetClipFunction(sphere)
+    clipper.SetValue(0.5)
+    clipper.Update()
+
+    volume_mapper = vtk.vtkPolyDataMapper()
+    volume_mapper.SetInputConnection(clipper.GetOutputPort())
+    volume_mapper.SetScalarVisibility(0)
+
+    volume_actor = vtk.vtkActor()
+    volume_actor.SetMapper(volume_mapper)
+    volume_actor.GetProperty().SetColor(colors.GetColor3d("skin"))
+
+    sphere_sample = vtk.vtkSampleFunction()
+    sphere_sample.SetImplicitFunction(sphere)
+    sphere_sample.SetModelBounds(-300, 300, -300, 300, -300, 300)
+    sphere_sample.SetSampleDimensions(50, 50, 50)
+    sphere_sample.ComputeNormalsOff()
+
+    sphere_contour = vtk.vtkContourFilter()
+    sphere_contour.SetInputConnection(sphere_sample.GetOutputPort())
+    sphere_contour.SetValue(0, 0.0)
+    sphere_contour.Update()
+
+    sphere_mapper = vtk.vtkPolyDataMapper()
+    sphere_mapper.SetInputConnection(sphere_contour.GetOutputPort())
+    sphere_mapper.ScalarVisibilityOff()
+
+    sphere_actor = vtk.vtkActor()
+    sphere_actor.SetMapper(sphere_mapper)
+    sphere_actor.GetProperty().SetColor(colors.GetColor3d("sphere"))
+    sphere_actor.GetProperty().SetOpacity(0.3)
+
+    return [volume_actor, sphere_actor]
 
 
 
@@ -142,7 +184,7 @@ if __name__ == '__main__':
 
     renderer_top_left = create_renderer([bone_actor, view_1(skin_contour_filter)], [0, 0.5, 0.5, 1], colors.GetColor3d("view1_bc"))
     renderer_top_right = create_renderer([bone_actor, view_2(skin_contour_filter)], [0.5, 0.5, 1, 1], colors.GetColor3d("view2_bc"))
-    renderer_bottom_left = create_renderer([bone_actor, skin_actor], [0, 0, 0.5, 0.5], colors.GetColor3d("view3_bc"))
+    renderer_bottom_left = create_renderer([bone_actor] + view_3(skin_contour_filter), [0, 0, 0.5, 0.5], colors.GetColor3d("view3_bc"))
     renderer_bottom_right = create_renderer([bone_actor, skin_actor], [0.5, 0, 1, 0.5], colors.GetColor3d("view4_bc"))
 
     #renderer = vtk.vtkRenderer()
