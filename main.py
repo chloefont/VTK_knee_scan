@@ -1,4 +1,5 @@
 import vtk
+import os
 
 # source : https://kitware.github.io/vtk-examples/site/Cxx/IO/ReadSLC/
 colors = vtk.vtkNamedColors()
@@ -10,6 +11,12 @@ colors.SetColor("skin", [165, 127, 127, 255])
 colors.SetColor("bone", [232, 232, 232, 255])
 colors.SetColor("sphere", [205, 206, 230, 255])
 
+
+def write_polydata(polydata, filename):
+    writer = vtk.vtkPolyDataWriter()
+    writer.SetFileName(filename)
+    writer.SetInputData(polydata)
+    writer.Write()
 
 def view_1(skin_contour_filter):
     cut_plane = vtk.vtkPlane()
@@ -106,6 +113,38 @@ def view_3(skin_contour_filter):
     return [volume_actor, sphere_actor]
 
 
+def view_4(bone_mapper, skin_mapper):
+    FILENAME = "skin_distance.vtk"
+
+
+    distance_mapper = vtk.vtkPolyDataMapper()
+    if not os.path.exists(FILENAME):
+        distance_filter = vtk.vtkDistancePolyDataFilter()
+        distance_filter.SetInputData(0, bone_mapper.GetInput())
+        distance_filter.SetInputData(1, skin_mapper.GetInput())
+        distance_filter.SignedDistanceOff()
+        distance_filter.Update()
+        write_polydata(distance_filter.GetOutput(), FILENAME)
+        distance_mapper.SetInputConnection(distance_filter.GetOutputPort())
+        distance_mapper.SetScalarRange(distance_filter.GetOutput().GetPointData().GetScalars().GetRange())
+    else :
+        reader = vtk.vtkPolyDataReader()
+        reader.SetFileName(FILENAME)
+        reader.Update()
+        distance_mapper.SetInputData(reader.GetOutput())
+        distance_mapper.SetScalarRange(reader.GetOutput().GetPointData().GetScalars().GetRange())
+        #distance_filter.SetInputConnection(reader.GetOutputPort())
+
+
+    distance_mapper.SetScalarVisibility(1)
+
+    distance_actor = vtk.vtkActor()
+    distance_actor.SetMapper(distance_mapper)
+    #distance_actor.GetProperty().SetOpacity(0.5)
+    #distance_actor.GetProperty().SetInterpolationToFlat()
+    #distance_actor.GetProperty().SetRepresentationToWireframe()
+    return distance_actor
+
 
 def create_renderer(actors, viewport, background_color=colors.GetColor3d("SlateGray")):
     renderer = vtk.vtkRenderer()
@@ -185,7 +224,7 @@ if __name__ == '__main__':
     renderer_top_left = create_renderer([bone_actor, view_1(skin_contour_filter)], [0, 0.5, 0.5, 1], colors.GetColor3d("view1_bc"))
     renderer_top_right = create_renderer([bone_actor, view_2(skin_contour_filter)], [0.5, 0.5, 1, 1], colors.GetColor3d("view2_bc"))
     renderer_bottom_left = create_renderer([bone_actor] + view_3(skin_contour_filter), [0, 0, 0.5, 0.5], colors.GetColor3d("view3_bc"))
-    renderer_bottom_right = create_renderer([bone_actor, skin_actor], [0.5, 0, 1, 0.5], colors.GetColor3d("view4_bc"))
+    renderer_bottom_right = create_renderer([view_4(bone_mapper, skin_mapper)], [0.5, 0, 1, 0.5], colors.GetColor3d("view4_bc"))
 
     #renderer = vtk.vtkRenderer()
     render_window = vtk.vtkRenderWindow()
@@ -195,11 +234,11 @@ if __name__ == '__main__':
     render_window.AddRenderer(renderer_bottom_right)
     render_window.SetSize(640, 512)
 
-    render_window_interactor = vtk.vtkRenderWindowInteractor()
-    render_window_interactor.SetRenderWindow(render_window)
+    #render_window_interactor = vtk.vtkRenderWindowInteractor()
+    #render_window_interactor.SetRenderWindow(render_window)
 
 
-    render_window.Render()
+
 
     # Pick a good view
     camera = renderer_top_left.GetActiveCamera()
@@ -210,7 +249,15 @@ if __name__ == '__main__':
     renderer_top_left.ResetCamera()
     renderer_top_left.ResetCameraClippingRange()
 
+    interactor = vtk.vtkRenderWindowInteractor()
+    interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
+    interactor.SetRenderWindow(render_window)
+
+    #render_window_interactor.SetInteractorStyle(interactor)
+
+    render_window.Render()
+
     render_window.SetWindowName("ReadSLC")
     render_window.Render()
-    render_window_interactor.Start()
+    interactor.Start()
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
