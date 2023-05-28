@@ -2,6 +2,12 @@ import vtk
 
 # source : https://kitware.github.io/vtk-examples/site/Cxx/IO/ReadSLC/
 colors = vtk.vtkNamedColors()
+colors.SetColor("view1_bc", [255, 210, 210, 255])
+colors.SetColor("view2_bc", [210, 255, 210, 255])
+colors.SetColor("view3_bc", [210, 210, 255, 255])
+colors.SetColor("view4_bc", [210, 210, 210, 255])
+colors.SetColor("skin", [165, 127, 127, 255])
+colors.SetColor("bone", [232, 232, 232, 255])
 
 
 def view_1(skin_contour_filter):
@@ -35,12 +41,22 @@ def view_1(skin_contour_filter):
     return cut_actor
 
 
+def create_renderer(actors, viewport, background_color=colors.GetColor3d("SlateGray")):
+    renderer = vtk.vtkRenderer()
+    renderer.SetViewport(viewport)
+    renderer.SetBackground(background_color)
+    for actor in actors:
+        renderer.AddActor(actor)
+    return renderer
+
 
 if __name__ == '__main__':
     FILENAME = "data/vw_knee.slc"
     VTK_FILE = "data/vw_knee.vtk"
     iso_value = 72
     skin_iso_value = 50
+
+
 
     # Using vtkSLCReader to read Volumetric file format( < filename.slc >)
     reader = vtk.vtkSLCReader()
@@ -83,14 +99,14 @@ if __name__ == '__main__':
     bone_actor = vtk.vtkActor()
     bone_actor.SetMapper(bone_mapper)
     bone_actor.GetProperty().SetDiffuse(0.8)
-    bone_actor.GetProperty().SetDiffuseColor(colors.GetColor3d("Ivory"))
+    bone_actor.GetProperty().SetDiffuseColor(colors.GetColor3d("bone"))
     bone_actor.GetProperty().SetSpecular(0.8)
     bone_actor.GetProperty().SetSpecularPower(120.0)
 
     skin_actor = vtk.vtkActor()
     skin_actor.SetMapper(skin_mapper)
     skin_actor.GetProperty().SetDiffuse(0.8)
-    skin_actor.GetProperty().SetDiffuseColor(colors.GetColor3d("PeachPuff"))
+    skin_actor.GetProperty().SetDiffuseColor(colors.GetColor3d("skin"))
     skin_actor.GetProperty().SetSpecular(0.8)
     skin_actor.GetProperty().SetSpecularPower(120.0)
 
@@ -101,28 +117,36 @@ if __name__ == '__main__':
     extract_VOI.SetSampleRate(2, 2, 2)
     extract_VOI.Update()
 
-    renderer = vtk.vtkRenderer()
+    renderer_top_left = create_renderer([bone_actor, view_1(skin_contour_filter)], [0, 0.5, 0.5, 1], colors.GetColor3d("view1_bc"))
+    renderer_top_right = create_renderer([bone_actor, skin_actor], [0.5, 0.5, 1, 1], colors.GetColor3d("view2_bc"))
+    renderer_bottom_left = create_renderer([bone_actor, skin_actor], [0, 0, 0.5, 0.5], colors.GetColor3d("view3_bc"))
+    renderer_bottom_right = create_renderer([bone_actor, skin_actor], [0.5, 0, 1, 0.5], colors.GetColor3d("view4_bc"))
+
+    #renderer = vtk.vtkRenderer()
     render_window = vtk.vtkRenderWindow()
-    render_window.AddRenderer(renderer)
+    render_window.AddRenderer(renderer_top_left)
+    render_window.AddRenderer(renderer_top_right)
+    render_window.AddRenderer(renderer_bottom_left)
+    render_window.AddRenderer(renderer_bottom_right)
     render_window.SetSize(640, 512)
 
     render_window_interactor = vtk.vtkRenderWindowInteractor()
     render_window_interactor.SetRenderWindow(render_window)
 
-    renderer.AddActor(bone_actor)
+    #renderer.AddActor(bone_actor)
     #renderer.AddActor(skin_actor)
-    renderer.AddActor(view_1(skin_contour_filter))
-    renderer.SetBackground(colors.GetColor3d("SlateGray"))
+    #renderer.AddActor(view_1(skin_contour_filter))
+    #renderer.SetBackground(colors.GetColor3d("SlateGray"))
     render_window.Render()
 
     # Pick a good view
-    camera = renderer.GetActiveCamera()
+    camera = renderer_top_left.GetActiveCamera()
     camera.SetFocalPoint(0.0, 0.0, 0.0)
     camera.SetPosition(0.0, -1.0, 0.0)
     camera.SetViewUp(0.0, 0.0, -1.0)
     camera.Azimuth(-90.0)
-    renderer.ResetCamera()
-    renderer.ResetCameraClippingRange()
+    renderer_top_left.ResetCamera()
+    renderer_top_left.ResetCameraClippingRange()
 
     render_window.SetWindowName("ReadSLC")
     render_window.Render()
