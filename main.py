@@ -37,8 +37,30 @@ def view_1(skin_contour_filter):
 
     cut_actor = vtk.vtkActor()
     cut_actor.SetMapper(cut_mapper)
-    cut_actor.GetProperty().SetColor(colors.GetColor3d("PeachPuff"))
+    cut_actor.GetProperty().SetColor(colors.GetColor3d("skin"))
     return cut_actor
+
+
+def view_2(skin_contour_filter):
+    sphere = vtk.vtkSphere()
+    sphere.SetRadius(50)
+    sphere.SetCenter(70, 40, 100)
+
+    clipper = vtk.vtkClipPolyData()
+    clipper.SetInputConnection(skin_contour_filter.GetOutputPort())
+    clipper.SetClipFunction(sphere)
+    clipper.SetValue(0.5)
+    clipper.Update()
+
+    volume_mapper = vtk.vtkPolyDataMapper()
+    volume_mapper.SetInputConnection(clipper.GetOutputPort())
+    volume_mapper.SetScalarVisibility(0)
+
+    volume_actor = vtk.vtkActor()
+    volume_actor.SetMapper(volume_mapper)
+    volume_actor.GetProperty().SetColor(colors.GetColor3d("skin"))
+    return volume_actor
+
 
 
 def create_renderer(actors, viewport, background_color=colors.GetColor3d("SlateGray")):
@@ -53,7 +75,7 @@ def create_renderer(actors, viewport, background_color=colors.GetColor3d("SlateG
 if __name__ == '__main__':
     FILENAME = "data/vw_knee.slc"
     VTK_FILE = "data/vw_knee.vtk"
-    iso_value = 72
+    bone_iso_value = 72
     skin_iso_value = 50
 
 
@@ -74,7 +96,7 @@ if __name__ == '__main__':
     # Change the range(2nd and 3rd Parameter) based on your
     # requirement.recomended value for 1st parameter is above 1
     bone_contour_filter.GenerateValues(5, 80.0, 100.0);
-    bone_contour_filter.SetValue(0, iso_value)
+    bone_contour_filter.SetValue(0, bone_iso_value)
     bone_contour_filter.Update()
 
     #skin_contour_filter.GenerateValues(5, 80.0, 100.0);
@@ -94,7 +116,6 @@ if __name__ == '__main__':
     skin_mapper = vtk.vtkPolyDataMapper()
     skin_mapper.SetInputConnection(skin_contour_filter.GetOutputPort())
     skin_mapper.SetScalarVisibility(0)
-
 
     bone_actor = vtk.vtkActor()
     bone_actor.SetMapper(bone_mapper)
@@ -118,7 +139,7 @@ if __name__ == '__main__':
     extract_VOI.Update()
 
     renderer_top_left = create_renderer([bone_actor, view_1(skin_contour_filter)], [0, 0.5, 0.5, 1], colors.GetColor3d("view1_bc"))
-    renderer_top_right = create_renderer([bone_actor, skin_actor], [0.5, 0.5, 1, 1], colors.GetColor3d("view2_bc"))
+    renderer_top_right = create_renderer([bone_actor, view_2(skin_contour_filter)], [0.5, 0.5, 1, 1], colors.GetColor3d("view2_bc"))
     renderer_bottom_left = create_renderer([bone_actor, skin_actor], [0, 0, 0.5, 0.5], colors.GetColor3d("view3_bc"))
     renderer_bottom_right = create_renderer([bone_actor, skin_actor], [0.5, 0, 1, 0.5], colors.GetColor3d("view4_bc"))
 
@@ -133,10 +154,7 @@ if __name__ == '__main__':
     render_window_interactor = vtk.vtkRenderWindowInteractor()
     render_window_interactor.SetRenderWindow(render_window)
 
-    #renderer.AddActor(bone_actor)
-    #renderer.AddActor(skin_actor)
-    #renderer.AddActor(view_1(skin_contour_filter))
-    #renderer.SetBackground(colors.GetColor3d("SlateGray"))
+
     render_window.Render()
 
     # Pick a good view
