@@ -25,7 +25,7 @@ def get_camera():
     camera.SetFocalPoint(0.0, 0.0, 0.0)
     camera.SetPosition(0.0, -1.0, 0.0)
     camera.SetViewUp(0.0, 0.0, -1.0)
-    camera.Azimuth(-90.0)
+    camera.Azimuth(0)
     return camera
 
 def view_1(skin_contour_filter):
@@ -64,7 +64,6 @@ def view_2(skin_contour_filter):
     sphere.SetRadius(50)
     sphere.SetCenter(70, 40, 100)
 
-
     clipper = vtk.vtkClipPolyData()
     clipper.SetInputConnection(skin_contour_filter.GetOutputPort())
     clipper.SetClipFunction(sphere)
@@ -77,7 +76,12 @@ def view_2(skin_contour_filter):
 
     volume_actor = vtk.vtkActor()
     volume_actor.SetMapper(volume_mapper)
+    volume_actor.GetProperty().SetOpacity(0.5)
     volume_actor.GetProperty().SetColor(colors.GetColor3d("skin"))
+
+    property = vtk.vtkProperty()
+    property.SetColor(colors.GetColor3d("skin"))
+    volume_actor.SetBackfaceProperty(property)
 
     return volume_actor
 
@@ -169,34 +173,37 @@ def create_renderer(actors, viewport, camera, background_color=colors.GetColor3d
     return renderer
 
 
+def get_contour_filter(reader, iso_value):
+    contour_filter = vtk.vtkContourFilter()
+    contour_filter.SetInputConnection(reader.GetOutputPort())
+    contour_filter.GenerateValues(5, 80.0, 100.0)
+    contour_filter.SetValue(0, iso_value)
+    contour_filter.Update()
+    return contour_filter
+
+
 if __name__ == '__main__':
     FILENAME = "data/vw_knee.slc"
     VTK_FILE = "data/vw_knee.vtk"
-    bone_iso_value = 72
-    skin_iso_value = 50
+    BONE_ISO_VALUE = 72
+    SKIN_ISO_VALUE = 50
 
-    # Using vtkSLCReader to read Volumetric file format( < filename.slc >)
+    WIDTH_SIZE = 800
+    HEIGHT_SIZE = 800
+
+    # Read file
     reader = vtk.vtkSLCReader()
     reader.SetFileName(FILENAME)
     reader.Update()
 
     # Implementing Marching Cubes Algorithm to create the surface using
     # vtkContourFilter object
-    bone_contour_filter = vtk.vtkContourFilter()
-    bone_contour_filter.SetInputConnection(reader.GetOutputPort())
-
-    skin_contour_filter = vtk.vtkContourFilter()
-    skin_contour_filter.SetInputConnection(reader.GetOutputPort())
 
     # Change the range(2nd and 3rd Parameter) based on your
     # requirement.recomended value for 1st parameter is above 1
-    bone_contour_filter.GenerateValues(5, 80.0, 100.0);
-    bone_contour_filter.SetValue(0, bone_iso_value)
-    bone_contour_filter.Update()
 
-    #skin_contour_filter.GenerateValues(5, 80.0, 100.0);
-    skin_contour_filter.SetValue(0, skin_iso_value)
-    skin_contour_filter.Update()
+    bone_contour_filter = get_contour_filter(reader, BONE_ISO_VALUE)
+    skin_contour_filter = get_contour_filter(reader, SKIN_ISO_VALUE)
 
     outliner = vtk.vtkOutlineFilter()
     outliner.SetInputConnection(reader.GetOutputPort())
@@ -235,6 +242,7 @@ if __name__ == '__main__':
 
     # extractVOI is used to fix the problem of subsampling of data and reduce
     # slow interaction and increase loading speed
+    # source : https://kitware.github.io/vtk-examples/site/Cxx/IO/ReadSLC/
     extract_VOI = vtk.vtkExtractVOI()
     extract_VOI.SetInputConnection(reader.GetOutputPort())
     extract_VOI.SetSampleRate(2, 2, 2)
@@ -247,32 +255,22 @@ if __name__ == '__main__':
     renderer_bottom_left = create_renderer([bone_actor, outliner_actor] + view_3(skin_contour_filter), [0, 0, 0.5, 0.5], camera, colors.GetColor3d("view3_bc"))
     renderer_bottom_right = create_renderer([outliner_actor, view_4(bone_mapper, skin_mapper)], [0.5, 0, 1, 0.5], camera, colors.GetColor3d("view4_bc"))
 
-    #renderer = vtk.vtkRenderer()
     render_window = vtk.vtkRenderWindow()
     render_window.AddRenderer(renderer_top_left)
     render_window.AddRenderer(renderer_top_right)
     render_window.AddRenderer(renderer_bottom_left)
     render_window.AddRenderer(renderer_bottom_right)
-    render_window.SetSize(800, 800)
-
-    #render_window_interactor = vtk.vtkRenderWindowInteractor()
-    #render_window_interactor.SetRenderWindow(render_window)
+    render_window.SetSize(WIDTH_SIZE, HEIGHT_SIZE)
 
     interactor = vtk.vtkRenderWindowInteractor()
     interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
     interactor.SetRenderWindow(render_window)
 
-    #render_window_interactor.SetInteractorStyle(interactor)
-
-
-    # Rotate until mouse action
-    for _ in range(0, 360):
+    for _ in range(0, 720):
         time.sleep(0.01)
         camera.Azimuth(1)
         render_window.Render()
 
-    # render_window.Render()
     render_window.SetWindowName("Knee scan")
     render_window.Render()
     interactor.Start()
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
