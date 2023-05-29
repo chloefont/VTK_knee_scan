@@ -207,7 +207,7 @@ def get_renderer(actors, viewport, camera, background_color=colors.GetColor3d("S
     return renderer
 
 
-def get_contour_filter(reader, iso_value):
+def get_contour_filter(reader, iso_value, is_bone=False):
     '''
     Get contour filter with reader and iso value
     :param reader: the reader (vtkPolyDataReader)
@@ -215,8 +215,10 @@ def get_contour_filter(reader, iso_value):
     :return: the contour filter (vtkContourFilter)
     '''
     contour_filter = vtk.vtkContourFilter()
+    if is_bone:
+        contour_filter.GenerateValues(5, 80.0, 100.0)
+
     contour_filter.SetInputConnection(reader.GetOutputPort())
-    contour_filter.GenerateValues(5, 80.0, 100.0)
     contour_filter.SetValue(0, iso_value)
     contour_filter.Update()
     return contour_filter
@@ -265,7 +267,7 @@ if __name__ == '__main__':
     reader.Update()
 
     # Get contour filters
-    bone_contour_filter = get_contour_filter(reader, BONE_ISO_VALUE)
+    bone_contour_filter = get_contour_filter(reader, BONE_ISO_VALUE, True)
     skin_contour_filter = get_contour_filter(reader, SKIN_ISO_VALUE)
 
     outliner = vtk.vtkOutlineFilter()
