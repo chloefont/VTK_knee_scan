@@ -63,7 +63,6 @@ def view_1(skin_contour_filter):
     cut_filter = vtk.vtkTubeFilter()
     cut_filter.SetInputConnection(stripper.GetOutputPort())
     cut_filter.SetRadius(0.8)
-    #cut_filter.SetNumberOfSides(50)
     cut_filter.Update()
 
     cut_mapper = vtk.vtkPolyDataMapper()
