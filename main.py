@@ -16,6 +16,11 @@ KNEE_DIST_FILENAME = "skin_distance.vtk"
 
 
 def write_polydata(polydata, filename):
+    '''
+    Write a vtkPolyData to a file
+    :param polydata: the vtkPolyData to write
+    :param filename: the name of the file to write to
+    '''
     writer = vtk.vtkPolyDataWriter()
     writer.SetFileName(filename)
     writer.SetInputData(polydata)
@@ -23,6 +28,10 @@ def write_polydata(polydata, filename):
 
 
 def get_camera():
+    '''
+    Get a camera with a specific position
+    :return: the camera (vtkCamera)
+    '''
     camera = vtk.vtkCamera()
     camera.SetFocalPoint(0.0, 0.0, 0.0)
     camera.SetPosition(0.0, -1.0, 0.0)
@@ -30,7 +39,13 @@ def get_camera():
     camera.Azimuth(0)
     return camera
 
+
 def view_1(skin_contour_filter):
+    '''
+    Get the actor for the first view, by cutting the skin with a plane
+    :param skin_contour_filter: the contour filter for the skin
+    :return: a skin actor
+    '''
     cut_plane = vtk.vtkPlane()
     cut_plane.SetOrigin(0, 0, 0)
     cut_plane.SetNormal(0, 0, 1)
@@ -62,6 +77,11 @@ def view_1(skin_contour_filter):
 
 
 def view_2(skin_contour_filter):
+    '''
+    Get the actor for the second view, by cutting the skin with a sphere and showing the skin half transparent
+    :param skin_contour_filter: the contour filter for the skin
+    :return: a skin actor
+    '''
     sphere = vtk.vtkSphere()
     sphere.SetRadius(50)
     sphere.SetCenter(70, 40, 100)
@@ -89,6 +109,11 @@ def view_2(skin_contour_filter):
 
 
 def view_3(skin_contour_filter):
+    '''
+    Get the actors for the third view, by cutting the skin with a visible sphere
+    :param skin_contour_filter: the contour filter for the skin
+    :return: a skin actor and a sphere actor
+    '''
     sphere = vtk.vtkSphere()
     sphere.SetRadius(50)
     sphere.SetCenter(70, 40, 100)
@@ -131,6 +156,12 @@ def view_3(skin_contour_filter):
 
 
 def view_4(bone_mapper, skin_mapper):
+    '''
+    Get the actor for the fourth view, by showing the distance between the skin and the bone
+    :param bone_mapper: the mapper for the bone
+    :param skin_mapper: the mapper for the skin
+    :return: a distance mapper
+    '''
     distance_mapper = vtk.vtkPolyDataMapper()
     if not os.path.exists(KNEE_DIST_FILENAME):
         distance_filter = vtk.vtkDistancePolyDataFilter()
@@ -157,6 +188,14 @@ def view_4(bone_mapper, skin_mapper):
 
 
 def get_renderer(actors, viewport, camera, background_color=colors.GetColor3d("SlateGray")):
+    '''
+    Get renderer with actors, viewport, camera and background color
+    :param actors: the actors to show (list of vtkActor)
+    :param viewport: the viewport (list of 4 float)
+    :param camera: the camera (vtkCamera)
+    :param background_color: the background color (list of 3 float)
+    :return: the renderer (vtkRenderer)
+    '''
     renderer = vtk.vtkRenderer()
     renderer.SetViewport(viewport)
     renderer.SetBackground(background_color)
@@ -170,6 +209,12 @@ def get_renderer(actors, viewport, camera, background_color=colors.GetColor3d("S
 
 
 def get_contour_filter(reader, iso_value):
+    '''
+    Get contour filter with reader and iso value
+    :param reader: the reader (vtkPolyDataReader)
+    :param iso_value: the value of iso surface (float)
+    :return: the contour filter (vtkContourFilter)
+    '''
     contour_filter = vtk.vtkContourFilter()
     contour_filter.SetInputConnection(reader.GetOutputPort())
     contour_filter.GenerateValues(5, 80.0, 100.0)
@@ -179,6 +224,11 @@ def get_contour_filter(reader, iso_value):
 
 
 def get_mapper(contour_filter):
+    '''
+    Get mapper with contour filter
+    :param contour_filter: the contour filter (vtkContourFilter)
+    :return: the mapper (vtkPolyDataMapper)
+    '''
     mapper = vtk.vtkPolyDataMapper()
     mapper.SetInputConnection(contour_filter.GetOutputPort())
     mapper.ScalarVisibilityOff()
@@ -186,6 +236,12 @@ def get_mapper(contour_filter):
 
 
 def get_actor(mapper, color):
+    '''
+    Get actor with mapper and color
+    :param mapper: the mapper of the actor (vtkPolyDataMapper)
+    :param color: the color of the actor (tuple)
+    :return: the actor (vtkActor)
+    '''
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
     actor.GetProperty().SetDiffuse(0.8)
