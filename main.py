@@ -12,6 +12,8 @@ colors.SetColor("skin", [165, 127, 127, 255])
 colors.SetColor("bone", [232, 232, 232, 255])
 colors.SetColor("sphere", [205, 206, 230, 255])
 
+KNEE_DIST_FILENAME = "skin_distance.vtk"
+
 
 def write_polydata(polydata, filename):
     writer = vtk.vtkPolyDataWriter()
@@ -85,6 +87,7 @@ def view_2(skin_contour_filter):
 
     return volume_actor
 
+
 def view_3(skin_contour_filter):
     sphere = vtk.vtkSphere()
     sphere.SetRadius(50)
@@ -128,39 +131,32 @@ def view_3(skin_contour_filter):
 
 
 def view_4(bone_mapper, skin_mapper):
-    FILENAME = "skin_distance.vtk"
-
-
     distance_mapper = vtk.vtkPolyDataMapper()
-    if not os.path.exists(FILENAME):
+    if not os.path.exists(KNEE_DIST_FILENAME):
         distance_filter = vtk.vtkDistancePolyDataFilter()
         distance_filter.SetInputData(0, bone_mapper.GetInput())
         distance_filter.SetInputData(1, skin_mapper.GetInput())
         distance_filter.SignedDistanceOff()
         distance_filter.Update()
-        write_polydata(distance_filter.GetOutput(), FILENAME)
+        write_polydata(distance_filter.GetOutput(), KNEE_DIST_FILENAME)
         distance_mapper.SetInputConnection(distance_filter.GetOutputPort())
         distance_mapper.SetScalarRange(distance_filter.GetOutput().GetPointData().GetScalars().GetRange())
     else :
         reader = vtk.vtkPolyDataReader()
-        reader.SetFileName(FILENAME)
+        reader.SetFileName(KNEE_DIST_FILENAME)
         reader.Update()
         distance_mapper.SetInputData(reader.GetOutput())
         distance_mapper.SetScalarRange(reader.GetOutput().GetPointData().GetScalars().GetRange())
-        #distance_filter.SetInputConnection(reader.GetOutputPort())
 
 
     distance_mapper.SetScalarVisibility(1)
 
     distance_actor = vtk.vtkActor()
     distance_actor.SetMapper(distance_mapper)
-    #distance_actor.GetProperty().SetOpacity(0.5)
-    #distance_actor.GetProperty().SetInterpolationToFlat()
-    #distance_actor.GetProperty().SetRepresentationToWireframe()
     return distance_actor
 
 
-def create_renderer(actors, viewport, camera, background_color=colors.GetColor3d("SlateGray")):
+def get_renderer(actors, viewport, camera, background_color=colors.GetColor3d("SlateGray")):
     renderer = vtk.vtkRenderer()
     renderer.SetViewport(viewport)
     renderer.SetBackground(background_color)
@@ -182,6 +178,23 @@ def get_contour_filter(reader, iso_value):
     return contour_filter
 
 
+def get_mapper(contour_filter):
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputConnection(contour_filter.GetOutputPort())
+    mapper.ScalarVisibilityOff()
+    return mapper
+
+
+def get_actor(mapper, color):
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetDiffuse(0.8)
+    actor.GetProperty().SetSpecular(0.8)
+    actor.GetProperty().SetSpecularPower(120.0)
+    actor.GetProperty().SetColor(color)
+    return actor
+
+
 if __name__ == '__main__':
     FILENAME = "data/vw_knee.slc"
     VTK_FILE = "data/vw_knee.vtk"
@@ -196,12 +209,7 @@ if __name__ == '__main__':
     reader.SetFileName(FILENAME)
     reader.Update()
 
-    # Implementing Marching Cubes Algorithm to create the surface using
-    # vtkContourFilter object
-
-    # Change the range(2nd and 3rd Parameter) based on your
-    # requirement.recomended value for 1st parameter is above 1
-
+    # Get contour filters
     bone_contour_filter = get_contour_filter(reader, BONE_ISO_VALUE)
     skin_contour_filter = get_contour_filter(reader, SKIN_ISO_VALUE)
 
@@ -209,32 +217,16 @@ if __name__ == '__main__':
     outliner.SetInputConnection(reader.GetOutputPort())
     outliner.Update()
 
-    # Mappers
-    bone_mapper = vtk.vtkPolyDataMapper()
-    bone_mapper.SetInputConnection(bone_contour_filter.GetOutputPort())
-    bone_mapper.SetScalarVisibility(0)
-
-    skin_mapper = vtk.vtkPolyDataMapper()
-    skin_mapper.SetInputConnection(skin_contour_filter.GetOutputPort())
-    skin_mapper.SetScalarVisibility(0)
+    # Get mappers
+    bone_mapper = get_mapper(bone_contour_filter)
+    skin_mapper = get_mapper(skin_contour_filter)
 
     outliner_mapper = vtk.vtkPolyDataMapper()
     outliner_mapper.SetInputConnection(outliner.GetOutputPort())
 
-    # Actors
-    bone_actor = vtk.vtkActor()
-    bone_actor.SetMapper(bone_mapper)
-    bone_actor.GetProperty().SetDiffuse(0.8)
-    bone_actor.GetProperty().SetDiffuseColor(colors.GetColor3d("bone"))
-    bone_actor.GetProperty().SetSpecular(0.8)
-    bone_actor.GetProperty().SetSpecularPower(120.0)
-
-    skin_actor = vtk.vtkActor()
-    skin_actor.SetMapper(skin_mapper)
-    skin_actor.GetProperty().SetDiffuse(0.8)
-    skin_actor.GetProperty().SetDiffuseColor(colors.GetColor3d("skin"))
-    skin_actor.GetProperty().SetSpecular(0.8)
-    skin_actor.GetProperty().SetSpecularPower(120.0)
+    # Get actors
+    bone_actor = get_actor(bone_mapper, colors.GetColor3d("bone"))
+    skin_actor = get_actor(skin_mapper, colors.GetColor3d("skin"))
 
     outliner_actor = vtk.vtkActor()
     outliner_actor.SetMapper(outliner_mapper)
@@ -250,10 +242,10 @@ if __name__ == '__main__':
 
     camera = get_camera()
 
-    renderer_top_left = create_renderer([bone_actor, outliner_actor, view_1(skin_contour_filter)], [0, 0.5, 0.5, 1], camera, colors.GetColor3d("view1_bc"))
-    renderer_top_right = create_renderer([bone_actor, outliner_actor, view_2(skin_contour_filter)], [0.5, 0.5, 1, 1], camera, colors.GetColor3d("view2_bc"))
-    renderer_bottom_left = create_renderer([bone_actor, outliner_actor] + view_3(skin_contour_filter), [0, 0, 0.5, 0.5], camera, colors.GetColor3d("view3_bc"))
-    renderer_bottom_right = create_renderer([outliner_actor, view_4(bone_mapper, skin_mapper)], [0.5, 0, 1, 0.5], camera, colors.GetColor3d("view4_bc"))
+    renderer_top_left = get_renderer([bone_actor, outliner_actor, view_1(skin_contour_filter)], [0, 0.5, 0.5, 1], camera, colors.GetColor3d("view1_bc"))
+    renderer_top_right = get_renderer([bone_actor, outliner_actor, view_2(skin_contour_filter)], [0.5, 0.5, 1, 1], camera, colors.GetColor3d("view2_bc"))
+    renderer_bottom_left = get_renderer([bone_actor, outliner_actor] + view_3(skin_contour_filter), [0, 0, 0.5, 0.5], camera, colors.GetColor3d("view3_bc"))
+    renderer_bottom_right = get_renderer([outliner_actor, view_4(bone_mapper, skin_mapper)], [0.5, 0, 1, 0.5], camera, colors.GetColor3d("view4_bc"))
 
     render_window = vtk.vtkRenderWindow()
     render_window.AddRenderer(renderer_top_left)
