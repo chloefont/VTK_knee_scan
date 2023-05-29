@@ -259,33 +259,19 @@ if __name__ == '__main__':
     #render_window_interactor.SetRenderWindow(render_window)
 
     interactor = vtk.vtkRenderWindowInteractor()
-    style = vtk.vtkInteractorStyleTrackballCamera()
-
-    interactor.SetInteractorStyle(style)
+    interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
     interactor.SetRenderWindow(render_window)
 
     #render_window_interactor.SetInteractorStyle(interactor)
 
-    # while True:
-    #     time.sleep(0.05)
-    #     camera.Azimuth(1)
-    #     render_window.Render()
-
-    rotating = True
-
-    def stop_rotating():
-        global rotating
-        rotating = False
-
-    style.AddObserver(vtk.vtkCommand.LeftButtonPressEvent, stop_rotating)
 
     # Rotate until mouse action
-    while rotating:
-        time.sleep(0.1)
+    for _ in range(0, 360):
+        time.sleep(0.01)
         camera.Azimuth(1)
         render_window.Render()
 
-    render_window.Render()
+    # render_window.Render()
     render_window.SetWindowName("Knee scan")
     render_window.Render()
     interactor.Start()
