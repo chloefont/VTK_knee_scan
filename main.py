@@ -18,6 +18,15 @@ def write_polydata(polydata, filename):
     writer.SetInputData(polydata)
     writer.Write()
 
+
+def get_camera():
+    camera = vtk.vtkCamera()
+    camera.SetFocalPoint(0.0, 0.0, 0.0)
+    camera.SetPosition(0.0, -1.0, 0.0)
+    camera.SetViewUp(0.0, 0.0, -1.0)
+    camera.Azimuth(-90.0)
+    return camera
+
 def view_1(skin_contour_filter):
     cut_plane = vtk.vtkPlane()
     cut_plane.SetOrigin(0, 0, 0)
@@ -146,12 +155,16 @@ def view_4(bone_mapper, skin_mapper):
     return distance_actor
 
 
-def create_renderer(actors, viewport, background_color=colors.GetColor3d("SlateGray")):
+def create_renderer(actors, viewport, camera, background_color=colors.GetColor3d("SlateGray")):
     renderer = vtk.vtkRenderer()
     renderer.SetViewport(viewport)
     renderer.SetBackground(background_color)
+
     for actor in actors:
         renderer.AddActor(actor)
+
+    renderer.SetActiveCamera(camera)
+    renderer.ResetCamera()
     return renderer
 
 
@@ -160,8 +173,6 @@ if __name__ == '__main__':
     VTK_FILE = "data/vw_knee.vtk"
     bone_iso_value = 72
     skin_iso_value = 50
-
-
 
     # Using vtkSLCReader to read Volumetric file format( < filename.slc >)
     reader = vtk.vtkSLCReader()
@@ -191,7 +202,7 @@ if __name__ == '__main__':
     outliner.SetInputConnection(reader.GetOutputPort())
     outliner.Update()
 
-    # Visualize
+    # Mappers
     bone_mapper = vtk.vtkPolyDataMapper()
     bone_mapper.SetInputConnection(bone_contour_filter.GetOutputPort())
     bone_mapper.SetScalarVisibility(0)
@@ -200,6 +211,10 @@ if __name__ == '__main__':
     skin_mapper.SetInputConnection(skin_contour_filter.GetOutputPort())
     skin_mapper.SetScalarVisibility(0)
 
+    outliner_mapper = vtk.vtkPolyDataMapper()
+    outliner_mapper.SetInputConnection(outliner.GetOutputPort())
+
+    # Actors
     bone_actor = vtk.vtkActor()
     bone_actor.SetMapper(bone_mapper)
     bone_actor.GetProperty().SetDiffuse(0.8)
@@ -214,6 +229,10 @@ if __name__ == '__main__':
     skin_actor.GetProperty().SetSpecular(0.8)
     skin_actor.GetProperty().SetSpecularPower(120.0)
 
+    outliner_actor = vtk.vtkActor()
+    outliner_actor.SetMapper(outliner_mapper)
+    outliner_actor.GetProperty().SetColor(colors.GetColor3d("Black"))
+
     # extractVOI is used to fix the problem of subsampling of data and reduce
     # slow interaction and increase loading speed
     extract_VOI = vtk.vtkExtractVOI()
@@ -221,10 +240,12 @@ if __name__ == '__main__':
     extract_VOI.SetSampleRate(2, 2, 2)
     extract_VOI.Update()
 
-    renderer_top_left = create_renderer([bone_actor, view_1(skin_contour_filter)], [0, 0.5, 0.5, 1], colors.GetColor3d("view1_bc"))
-    renderer_top_right = create_renderer([bone_actor, view_2(skin_contour_filter)], [0.5, 0.5, 1, 1], colors.GetColor3d("view2_bc"))
-    renderer_bottom_left = create_renderer([bone_actor] + view_3(skin_contour_filter), [0, 0, 0.5, 0.5], colors.GetColor3d("view3_bc"))
-    renderer_bottom_right = create_renderer([view_4(bone_mapper, skin_mapper)], [0.5, 0, 1, 0.5], colors.GetColor3d("view4_bc"))
+    camera = get_camera()
+
+    renderer_top_left = create_renderer([bone_actor, outliner_actor, view_1(skin_contour_filter)], [0, 0.5, 0.5, 1], camera, colors.GetColor3d("view1_bc"))
+    renderer_top_right = create_renderer([bone_actor, outliner_actor, view_2(skin_contour_filter)], [0.5, 0.5, 1, 1], camera, colors.GetColor3d("view2_bc"))
+    renderer_bottom_left = create_renderer([bone_actor, outliner_actor] + view_3(skin_contour_filter), [0, 0, 0.5, 0.5], camera, colors.GetColor3d("view3_bc"))
+    renderer_bottom_right = create_renderer([outliner_actor, view_4(bone_mapper, skin_mapper)], [0.5, 0, 1, 0.5], camera, colors.GetColor3d("view4_bc"))
 
     #renderer = vtk.vtkRenderer()
     render_window = vtk.vtkRenderWindow()
@@ -232,7 +253,7 @@ if __name__ == '__main__':
     render_window.AddRenderer(renderer_top_right)
     render_window.AddRenderer(renderer_bottom_left)
     render_window.AddRenderer(renderer_bottom_right)
-    render_window.SetSize(640, 512)
+    render_window.SetSize(800, 800)
 
     #render_window_interactor = vtk.vtkRenderWindowInteractor()
     #render_window_interactor.SetRenderWindow(render_window)
@@ -241,13 +262,13 @@ if __name__ == '__main__':
 
 
     # Pick a good view
-    camera = renderer_top_left.GetActiveCamera()
-    camera.SetFocalPoint(0.0, 0.0, 0.0)
-    camera.SetPosition(0.0, -1.0, 0.0)
-    camera.SetViewUp(0.0, 0.0, -1.0)
-    camera.Azimuth(-90.0)
-    renderer_top_left.ResetCamera()
-    renderer_top_left.ResetCameraClippingRange()
+    # camera = renderer_top_left.GetActiveCamera()
+    # camera.SetFocalPoint(0.0, 0.0, 0.0)
+    # camera.SetPosition(0.0, -1.0, 0.0)
+    # camera.SetViewUp(0.0, 0.0, -1.0)
+    # camera.Azimuth(-90.0)
+    # renderer_top_left.ResetCamera()
+    # renderer_top_left.ResetCameraClippingRange()
 
     interactor = vtk.vtkRenderWindowInteractor()
     interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
