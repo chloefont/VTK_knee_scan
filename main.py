@@ -1,5 +1,6 @@
 import vtk
 import os
+import time
 
 # source : https://kitware.github.io/vtk-examples/site/Cxx/IO/ReadSLC/
 colors = vtk.vtkNamedColors()
@@ -44,7 +45,7 @@ def view_1(skin_contour_filter):
 
     cut_filter = vtk.vtkTubeFilter()
     cut_filter.SetInputConnection(stripper.GetOutputPort())
-    cut_filter.SetRadius(0.5)
+    cut_filter.SetRadius(0.8)
     #cut_filter.SetNumberOfSides(50)
     cut_filter.Update()
 
@@ -197,7 +198,6 @@ if __name__ == '__main__':
     skin_contour_filter.SetValue(0, skin_iso_value)
     skin_contour_filter.Update()
 
-    # Adding the outliner using vtkOutlineFilter object
     outliner = vtk.vtkOutlineFilter()
     outliner.SetInputConnection(reader.GetOutputPort())
     outliner.Update()
@@ -258,27 +258,21 @@ if __name__ == '__main__':
     #render_window_interactor = vtk.vtkRenderWindowInteractor()
     #render_window_interactor.SetRenderWindow(render_window)
 
-
-
-
-    # Pick a good view
-    # camera = renderer_top_left.GetActiveCamera()
-    # camera.SetFocalPoint(0.0, 0.0, 0.0)
-    # camera.SetPosition(0.0, -1.0, 0.0)
-    # camera.SetViewUp(0.0, 0.0, -1.0)
-    # camera.Azimuth(-90.0)
-    # renderer_top_left.ResetCamera()
-    # renderer_top_left.ResetCameraClippingRange()
-
     interactor = vtk.vtkRenderWindowInteractor()
     interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
     interactor.SetRenderWindow(render_window)
 
     #render_window_interactor.SetInteractorStyle(interactor)
 
-    render_window.Render()
 
-    render_window.SetWindowName("ReadSLC")
+    # Rotate until mouse action
+    for _ in range(0, 360):
+        time.sleep(0.01)
+        camera.Azimuth(1)
+        render_window.Render()
+
+    # render_window.Render()
+    render_window.SetWindowName("Knee scan")
     render_window.Render()
     interactor.Start()
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
